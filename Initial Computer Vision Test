@@ -4,234 +4,35 @@
 #     ||===||    \())       ))===))              ^-|-|-^          ||===||      #
 #/////////////////////////////////////////////// ||===||  /////////////////////#
 #////   Final Project    //////////////////////////////////////////////////////#
-#////////////////////////////// 14 OCT 2026 ///////////////////////////////////#
+#//////////////////////////////////////////////////////////////////////////////#
 #//////////////////////////////////////////////////////////// Ken Lindsay /////#
-#////                    //////             /////////////////             /////#
-
-# Check for GPU
-!nvidia-smi
-
-# Import torch
-import torch
-# Exercises require PyTorch > 1.10.0
-print(torch.__version__)
-think_card = "cuda" if torch.cuda.is_available() else "cpu"
-# TODO: Setup device agnostic code
-
-# Load necessary packages...
-import torchvision
-from torchvision import datasets
-from torchvision import transforms
-# Retrieve the MNIST training dataset...
-# train should be equal to True...
-review_data = datasets.MNIST(root = ".",
-                             train = True,
-                             download = True,
-                             transform= transforms.ToTensor())
-# transform = transform.ToTensor()
-# Retrieve the MNIST test dataset...
-# train will be false for test data...
-test_data = datasets.MNIST(root = ".",
-                           train = False,
-                           download = True,
-                           transform= transforms.ToTensor())
-
+# START: 14 OCT 2026   >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# 15 OCT 2026:
+# Having reviewed the last image classifier code, I rewrote this entire section.
+# Total Progress:
+# - Accessed Image Data .csv
+# - Accessed Images
+# - Transformed images to tensor.
+# - Generated Images with tensor transformed image.
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Let's begin by importing the necessary packages...
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+import pandas as pd
+import numpy as np
+import io
+import os
+from google.colab import files
+import statsmodels.api as sm
+import scipy.stats as stats
 import matplotlib.pyplot as plt
-for i in range(5):
-  img = review_data[i][0]
-  label = review_data[i][1]
-  plt.figure(figsize = (1,1));
-  # Use .squeeze() to change the tensor shape from (1, 28, 28) to (28, 28)
-  plt.imshow(img.squeeze(), cmap = "spring")
-  plt.title(label)
-  plt.axis(False);
-
-# Basic details...
-# torch.utils.data.DataLoader
-# batch_size = 32
-from torch.utils.data import DataLoader
-review_dataloader = DataLoader(dataset = review_data, batch_size =32, shuffle = True)
-# Not necessary to shuffle the test data, as the shuffle is really meant to inform training...
-test_dataloader = DataLoader(dataset = test_data, batch_size =32, shuffle = False)
-review_dataloader, test_dataloader
-#Hmm, appears to work...
-# Get some additional information...
-for item in next(iter(review_dataloader)):
-	print (item.shape)
-len(review_dataloader), len(test_dataloader)
-
-# model_2
-# Initiate from previous work...
-import torch
-from torch import nn
-# Note: Ran into a lot of errors from indentation...
-class MNIST_model_example(torch.nn.Module):
-    def __init__(self, input: int, hiddenwork: int, output: int):
-        super().__init__()
-# Block 1
-        self.conv_block_1 = nn.Sequential(
-            nn.Conv2d(in_channels=input, out_channels=hiddenwork, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(in_channels=hiddenwork, out_channels=hiddenwork, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
-        )
-# Block 2...
-        self.conv_block_2 = nn.Sequential(
-            nn.Conv2d(in_channels=hiddenwork, out_channels=hiddenwork, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(in_channels=hiddenwork, out_channels=hiddenwork, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
-        )
-# Classifier...
-        self.classifier = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(in_features=hiddenwork * 7 * 7, out_features=output)
-        )
-# Forward...
-    def forward(self, x):
-        x = self.conv_block_1(x)
-        x = self.conv_block_2(x)
-        x = self.classifier(x)
-        return x
-
-# Looking at the model, we want to set-up initial conditions...
-test_model_2 = MNIST_model_example(input=1, hiddenwork=10, output=10).to(think_card)
-test_model_2
-
-test_model_2.state_dict()
-
-# With model in place, we can compare two different types.
-# Time function will be similar across tests.
-%%time
-from tqdm.auto import tqdm
-# Adjust think_card variable:
-#think_card = "cpu"
-think_card = "cuda"
-# Training on CPU...
-processor_test_model = MNIST_model_example(input =1, hiddenwork = 10, output =10).to(think_card)
-# Loss and Optimization...
-loss_fn = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(processor_test_model.parameters(), lr=0.1)
-# Setting up training...
-epochs = 5
-for epoch in tqdm(range(epochs)):
-    train_loss = 0
-    processor_test_model.train()
-    for batch, (X, Y) in enumerate(review_dataloader):
-        # Be sure to pass data to processor of choice...
-        X, Y = X.to(think_card), Y.to(think_card)
-        # Predictions...
-        Y_pred = processor_test_model(X)
-        # Loss calculations...
-        loss = loss_fn(Y_pred, Y)
-        train_loss += loss.item()
-        # Optimizer
-        optimizer.zero_grad()
-        # Loss Backward
-        loss.backward()
-        # Optimizer Step
-        optimizer.step()
-
-    # Adjustments to loss data collection (average loss per batch)
-    train_loss /= len(review_dataloader)
-
-    # Initiating Loop...
-    test_loss_total = 0
-    # Place model in Evaluation Mode...
-    processor_test_model.eval()
-    # Inference Mode...
-    with torch.inference_mode():
-        for batch, (X_test, Y_test) in enumerate(test_dataloader):
-            X_test, Y_test = X_test.to(think_card), Y_test.to(think_card)
-            test_pred = processor_test_model(X_test)
-            test_loss = loss_fn(test_pred, Y_test)
-            test_loss_total += test_loss.item()
-        test_loss_total /= len(test_dataloader)
-
-    # PRINT OUT DATA...
-    print(f"Epoch: {epoch} | Loss: {train_loss:.3f} | Test loss: {test_loss_total:.3f}")
-
-# Training on GPU...
-
-
-# Interesting... How best to approach this...
-# Logits -> Prediction probabilities -> Prediction labels
-model_pred_logits = processor_test_model(test_data[0][0].unsqueeze(dim=0).to(think_card))
-model_pred_probs = torch.softmax(model_pred_logits, dim=1)
-model_pred_label = torch.argmax(model_pred_probs, dim=1)
-model_pred_label
-
-for j in range(5):
-  img = test_data[j][0]
-  label = test_data[j][1]
-
-  model_pred_logits = processor_test_model(test_data[j][0].unsqueeze(dim=0).to(think_card))
-  model_pred_probs = torch.softmax(model_pred_logits, dim=1)
-  model_pred_label = torch.argmax(model_pred_probs, dim=1)
-
-  plt.figure(figsize = (2,2));
-  # Use .squeeze() to change the tensor shape from (1, 28, 28) to (28, 28)
-  plt.imshow(img.squeeze(), cmap = "spring")
-  plt.title(f"Truth: {label} | Pred: {model_pred_label.cpu().item()}")
-  plt.axis(False);
-
-# Ran into issue with pip install of torchmetrics and needed to restart runtime...
-# See if torchmetrics exists, if not, install it
-import numpy
-
-try:
-    import torchmetrics, mlxtend
-    print(f"mlxtend version: {mlxtend.__version__}")
-    assert int(mlxtend.__version__.split(".")[1]) >= 19, "mlxtend verison should be 0.19.0 or higher"
-except:
-    !pip install -q torchmetrics -U mlxtend # <- Note: If you're using Google Colab, this may require restarting the runtime
-    import torchmetrics, mlxtend
-    print(f"mlxtend version: {mlxtend.__version__}")
-
-
-# Import mlxtend upgraded version
-import mlxtend
-print(mlxtend.__version__)
-assert int(mlxtend.__version__.split(".")[1]) >= 19 # should be version 0.19.0 or higher
-
-
-# Realized I need to bring in necessary packages...
-#!pip install -q torchmetrics -U mlxtend
-# Continue...
-#import torchmetrics
-#import mlxtend
-# Testing confusion matrix code...
-processor_test_model.eval()
-Y_preds = []
-with torch.inference_mode():
-    for X, Y in tqdm(test_dataloader):
-        X, Y = X.to(think_card), Y.to(think_card)
-        Y_pred_logits = processor_test_model(X)
-        Y_pred_labels = torch.argmax(torch.softmax(Y_pred_logits, dim=1), dim=1)
-        Y_preds.append(Y_pred_labels)
-    Y_preds = torch.cat(Y_preds).cpu()
-
-# Define class_names from the dataset
-class_names = review_data.classes
-
-from torchmetrics import ConfusionMatrix
-from mlxtend.plotting import plot_confusion_matrix
-
-test_confusion_matrix = ConfusionMatrix(task="multiclass", num_classes=len(class_names))
-test_confusion_matrix_tensor = test_confusion_matrix(preds=Y_preds, target=test_data.targets)
-
-fig, ax = plot_confusion_matrix(
-    conf_mat=test_confusion_matrix_tensor.numpy(),
-    class_names=class_names,
-    figsize=(10,8)
-)
-
-# Sweet! It seemed to have worked!
-
-
-# OK, let's take this model from the top...
+# Additional Model refinement packages...
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.feature_selection import SelectKBest, f_regression
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error
+import sklearn.feature_selection as fs
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Import torch and adjust desired processor...
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -239,199 +40,113 @@ import torch
 # Exercises require PyTorch > 1.10.0
 print(torch.__version__)
 think_card = "cuda" if torch.cuda.is_available() else "cpu"
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Load necessary packages and datasets...
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 import torchvision
 from torchvision import datasets
 from torchvision import transforms
-# Retrieve the MNIST training dataset...
-# train should be equal to True...
-review_data = datasets.FashionMNIST(root = ".",
-                             train = True,
-                             download = True,
-                             transform= transforms.ToTensor())
-# transform = transform.ToTensor()
-# Retrieve the MNIST test dataset...
-# train will be false for test data...
-test_data = datasets.FashionMNIST(root = ".",
-                           train = False,
-                           download = True,
-                           transform= transforms.ToTensor())
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Take a peek at the data...
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-import matplotlib.pyplot as plt
-#for i in range(5):
-#  img = review_data[i][0]
-#  label = review_data[i][1]
-#  plt.figure(figsize = (1,1));
-  # Use .squeeze() to change the tensor shape from (1, 28, 28) to (28, 28)
-#  plt.imshow(img.squeeze(), cmap = "spring")
-#  plt.title(label)
-#  plt.axis(False);
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Set up Data Loader...
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# torch.utils.data.DataLoader
-# batch_size = 32
 from torch.utils.data import DataLoader
-review_dataloader = DataLoader(dataset = review_data, batch_size =32, shuffle = True)
-# Not necessary to shuffle the test data, as the shuffle is really meant to inform training...
-test_dataloader = DataLoader(dataset = test_data, batch_size =32, shuffle = False)
-review_dataloader, test_dataloader
-#Hmm, appears to work...
-# Get some additional information...
-#for item in next(iter(review_dataloader)):
-#	print (item.shape)
-#len(review_dataloader), len(test_dataloader)
+# Tensorflow
+import tensorflow as tf
+# For file location...
+from PIL import Image
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Load .csv containing image classificiation data...
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# The Data Frame for Image Filename and Classification will be in the form of
+# .csv
 #
-fashion_class_names = review_data.classes
-fashion_class_names
+data= files.upload()
+file_name = list(data.keys())[0]
+BOATS_DF = pd.read_csv(io.BytesIO(data[file_name]))
+BOATS_DF.head()
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Set up Model...
+# Load images...
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Initiate from previous work...
-import torch
-from torch import nn
-# Note: Ran into a lot of errors from indentation...
-class Fashion_MNIST_model(torch.nn.Module):
-    def __init__(self, input: int, hiddenwork: int, output: int):
-        super().__init__()
-# Block 1
-        self.conv_block_1 = nn.Sequential(
-            nn.Conv2d(in_channels=input, out_channels=hiddenwork, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(in_channels=hiddenwork, out_channels=hiddenwork, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
-        )
-# Block 2...
-        self.conv_block_2 = nn.Sequential(
-            nn.Conv2d(in_channels=hiddenwork, out_channels=hiddenwork, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(in_channels=hiddenwork, out_channels=hiddenwork, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
-        )
-# Classifier...
-        self.classifier = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(in_features=hiddenwork * 7 * 7, out_features=output)
-        )
-# Forward...
-    def forward(self, x):
-        x = self.conv_block_1(x)
-        x = self.conv_block_2(x)
-        x = self.classifier(x)
-        return x
+# Finding the appropriate file directories...
+# "C:\Users\12064\Documents\Skillspire_Final_Project\BOAT IMAGES"
+# "train.csv"
+# "sample_submission.csv"
+# "test_submission.csv" (No Category Information Provided...)
+# image
+# category (1-5)
+# This is the basic boat files approach...
+#
+folder = files.upload()
+for dirname, _, filenames in os.walk('/sample_data'):
+    for filenames in folder:
+        print(os.path.join(dirname, filenames))
 
-#Fashion_MNIST_model
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Assessing initial conditions...
+# Transforming the images to tensor...
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-fashion_model_2 = Fashion_MNIST_model(input=1, hiddenwork=10, output=10).to(think_card)
-#fashion_model_2
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+# Custom dataset that correctly references the dataframe and root folder
+class CustomDataset(Dataset):
+    def __init__(self, df, root_dir, transform=None):
+        # Filter the DataFrame to only include images that actually exist on disk
+        self.root_dir = root_dir
+        self.transform = transform
+        
+        valid_indices = []
+        for idx in range(len(df)):
+            img_name = str(df.iloc[idx, 0])
+            if os.path.exists(os.path.join(self.root_dir, img_name)):
+                valid_indices.append(idx)
+                
+        self.df = df.iloc[valid_indices].reset_index(drop=True)
+        print(f"Filtered dataset: found {len(self.df)} matching images out of {len(df)} total rows.")
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        img_name = str(self.df.iloc[idx, 0])
+        img_path = os.path.join(self.root_dir, img_name)
+        image = Image.open(img_path).convert('RGB')
+        label = int(self.df.iloc[idx, 1])
+        
+        if self.transform:
+            image = self.transform(image)
+        return image, label
+
+# Instantiate the dataset pointing to /content and filtering for available files
+dataset = CustomDataset(df=BOATS_DF, root_dir='/content', transform=transform)
+
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=True)
+
+# Safely run the loop only if we have images available
+if len(dataset) > 0:
+    for images, labels in dataloader:
+        print("Batch of images shape:", images.shape)
+        print("Batch of labels shape:", labels.shape)
+        break
+else:
+    print("No matching images found. Please upload more boat images to '/content'.")
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# TRAINING THE MODEL
+# Observe initial images and scaled tensor images side by side...
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# With model in place, we can compare two different types.
-# Time function will be similar across tests.
+from torchvision import utils
+start_img = Image.open("/content/299281.jpg").convert("RGB")
+transform_img = transform(start_img)
+revert_img = transforms.ToPILImage()(transform_img)
+#grid = utils.make_grid([start_img, revert_img], nrow = 2, padding =2)
 
-#%%time
-from tqdm.auto import tqdm
-from torchmetrics import Accuracy
+plt.figure(figsize=(8,4))
+#plt.imshow(grid)
+plt.imshow(start_img)
+plt.axis("off")
+plt.tight_layout()
+plt.show()
 
-acc_fn = Accuracy(task = 'multiclass', num_classes=len(fashion_class_names)).to(think_card)
-# Adjust think_card variable:
-#think_card = "cpu"
-#think_card = "cuda"
-# Training on CPU...
-processor_test_model = Fashion_MNIST_model(input =1, hiddenwork = 10, output =10).to(think_card)
-# Loss and Optimization...
-loss_fn = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(processor_test_model.parameters(), lr=0.1)
-# Setting up training...
-epochs = 5
-for epoch in tqdm(range(epochs)):
-    train_loss = 0
-    test_loss_total = 0
-    train_acc = 0
-    test_acc = 0
-
-    processor_test_model.train()
-    for batch, (X, Y) in enumerate(review_dataloader):
-        # Be sure to pass data to processor of choice...
-        X, Y = X.to(think_card), Y.to(think_card)
-        # Predictions...
-        Y_pred = processor_test_model(X)
-        # Loss calculations...
-        loss = loss_fn(Y_pred, Y)
-        train_loss += loss.item()
-        train_acc += acc_fn(Y_pred, Y)
-        # Optimizer
-        optimizer.zero_grad()
-        # Loss Backward
-        loss.backward()
-        # Optimizer Step
-        optimizer.step()
-
-    # Adjustments to loss data collection (average loss per batch)
-    train_loss /= len(review_dataloader)
-    train_acc /= len(review_dataloader)
-    # Initiating Loop...
-    test_loss_total = 0
-    # Place model in Evaluation Mode...
-    processor_test_model.eval()
-    # Inference Mode...
-    with torch.inference_mode():
-        for batch, (X_test, Y_test) in enumerate(test_dataloader):
-            X_test, Y_test = X_test.to(think_card), Y_test.to(think_card)
-            test_pred = processor_test_model(X_test)
-            test_loss = loss_fn(test_pred, Y_test)
-            test_loss_total += test_loss.item()
-            test_acc += acc_fn(test_pred, Y_test)
-        test_loss_total /= len(test_dataloader)
-        test_acc /= len(review_dataloader)
-    # PRINT OUT DATA...
-    #print(f"Epoch: {epoch} | Loss: {train_loss:.3f} | Test loss: {test_loss_total:.3f}")
-    print(f"Epoch: {epoch} | Train loss: {train_loss:.3f} | Train acc: {train_acc:.2f} | Test loss: {test_loss_total:.3f} | Test acc: {test_acc:.2f}")
-
-# MODEL PREDICTION?
-#think_card = 'cuda'
-fashion_trends = []
-processor_test_model.eval()
-with torch.inference_mode():
-	for X_test, Y_test, in tqdm(test_dataloader):
-	  Y_logits = processor_test_model(X_test.to(think_card))
-	  Y_pred_probs = torch.softmax(Y_logits, dim=1)
-	  Y_pred_labels = torch.argmax(Y_pred_probs, dim=1)
-	  fashion_trends.append(Y_pred_labels)
-fashion_trends = torch.cat(fashion_trends).cpu()
-fashion_trends[:10], len(fashion_trends)
-
-
-# This was an interesting problem, as I was not quite sure how to assess the inaccurate parts specifically.
-import numpy as np
-inaccurate = np.where(fashion_trends != test_data.targets)[0]
-len(inaccurate)
-# Interesting to see how many inaccurate results occurred...
-
-# Select random 9 wrong predictions and plot them
-import random
-random_garments = random.sample(list(inaccurate), k=9)
-plt.figure(figsize=(10, 10))
-for i, idx in enumerate(random_garments):
-  # Get true and pred labels
-  true_label = fashion_class_names[test_data[idx][1]]
-  pred_label = fashion_class_names[fashion_trends[idx]]
-
-  # Plot the wrong prediction with its original label
-  plt.subplot(3, 3, i+1)
-  plt.imshow(test_data[idx][0].squeeze(), cmap="spring")
-  plt.title(f"True: {true_label} | Pred: {pred_label}", c="r")
-  plt.axis(False);
-
-  #This was a very interesting lesson, as it would be helpful to see what the data is that would flagged as inaccurate.
-
-
+plt.imshow(revert_img)
